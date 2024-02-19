@@ -1,0 +1,111 @@
+﻿@page "/";
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="container-fluid p-3">
+    <div class="row align-items-center justify-content-center">
+        <div class="col-12 p-0 mb-5 ">
+            <div class="p-2 d-flex align-items-center justify-content-center">
+                <div class="outer-container">
+                    <div class="inner-container">
+                        <div class="video-overlay rounded">Now Playing: @nowPlayingMovie?.Title</div>
+                        <video @ref=videoPlayer controls id="videoPlayer" poster="/images/poster.png">
+                        </video>
+                    </div>
+                </div>               
+            </div>
+        </div>        
+        <div class="col-12 d-flex align-items-center justify-content-center">
+            <div id="scrollbar" class="hstack gap-4 cardList">
+                @foreach (var item in movies)
+                {
+                    <MovieCard Movie="item" OnPlayCallBack="@playMovie" NowPlayingMovie="@nowPlayingMovie?.Title" />
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+
+@code {
+
+
+    private List<Movie> movies = new();
+    private Movie? nowPlayingMovie;
+    private ElementReference videoPlayer;
+    private IJSObjectReference? module;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+
+            module = await JS.InvokeAsync<IJSObjectReference>(
+              "import", "./Components/Pages/MoviePlayer.razor.js");
+
+
+            if (nowPlayingMovie is not null)
+            {
+                await module.InvokeVoidAsync("loadMovie", nowPlayingMovie.Video, videoPlayer);
+            }
+
+        }
+    }
+    protected override void OnInitialized()
+    {
+        getMovies();
+
+
+        if (nowPlayingMovie is null)
+        {
+            nowPlayingMovie = movies[0];
+        }
+
+    }
+
+    private async void playMovie(Movie movie)
+    {
+        if (module is not null && movie is not null)
+        {
+            nowPlayingMovie = movie;
+
+
+            await module.InvokeVoidAsync("playMovie", nowPlayingMovie.Video, videoPlayer);
+        }
+
+    }
+
+
+    async ValueTask IAsyncDisposable.DisposeAsync()
+    {
+        if (module is not null)
+        {
+            await module.DisposeAsync();
+        }
+    }
+
+    //Add movies to the list
+    private void getMovies()
+    {
+        movies.Add(new Movie()
+            {
+                Title = "Drive",
+                Poster = "bolid.png",
+                Video = "drive.mp4"
+            });
+
+        movies.Add(new Movie()
+            {
+                Title = "Time",
+                Poster = "poster2.png",
+                Video = "time.mp4"
+            });
+
+        movies.Add(new Movie()
+            {
+                Title = "Hearts",
+                Poster = "poster3.png",
+                Video = "hearts.mp4"
+            });
+    }
+}
